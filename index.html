@@ -50,11 +50,21 @@ h1{text-align:center;margin:18px 0 4px;font-size:28px}
 #gans{display:none;min-height:56px;border:2px dashed #4a6199;border-radius:12px;padding:4px;flex-wrap:wrap;margin:8px 0}
 #gopts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:auto;margin-bottom:12px}
 #gopts .opt{flex:1 1 100%;font-size:18px;padding:14px}
+#drw{position:fixed;left:0;top:0;bottom:0;width:min(88vw,380px);background:#182848;z-index:30;transform:translateX(-105%);transition:transform .25s;display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 12px);box-shadow:4px 0 20px #0008}
+#drw.open{transform:none}
+#ov{display:none;position:fixed;inset:0;background:#0007;z-index:20}#ov.on{display:block}
+.wh{display:flex;justify-content:space-between;align-items:center;font-size:20px;font-weight:800;margin-bottom:8px}
+.wts{display:flex;gap:6px;margin-bottom:8px}.wt{flex:1;padding:8px 0;border-radius:10px;background:#2c4577;font-size:14px}.wt.on{background:var(--ac);color:#1b1b1b;font-weight:700}
+#wlist{flex:1;overflow-y:auto}
+.wi{display:flex;justify-content:space-between;gap:8px;align-items:center;background:var(--card);border-radius:12px;padding:10px 12px;margin-bottom:8px;line-height:1.4;word-break:break-word}
+.wi small{color:var(--mu)}.wi button{background:#2c4577;border-radius:8px;padding:6px 10px}
+.rt{display:flex;flex-direction:column;gap:8px;margin-top:8px}.rt button{padding:12px;border-radius:12px;background:var(--ac);color:#1b1b1b;font-weight:800}.rt button:disabled{opacity:.35}
 </style>
 </head>
 <body>
 <div id="app">
  <section class="scr on" id="home">
+  <div style="text-align:left"><button id="wbtn" class="spk" style="margin:0">📕 錯題本 <b id="wcnt" style="color:var(--bad)"></b></button></div>
   <h1>🔤 單字闖關拼字王</h1>
   <p class="sub">佳音翰林版 · 點字母拼出單字</p>
   <div id="stats" style="text-align:center;color:var(--mu);font-size:13px;margin:-8px 0 14px"></div>
@@ -94,9 +104,13 @@ h1{text-align:center;margin:18px 0 4px;font-size:28px}
   <div id="gopts"></div>
   <button id="gnext" class="pri" style="margin:0 0 14px">下一題 ›</button>
  </section>
+ <aside id="drw"><div class="wh"><span>📕 錯題本</span><button id="wclose" class="spk" style="margin:0">✕</button></div>
+ <div class="wts"><button class="wt on" data-t="a">全部</button><button class="wt" data-t="w">單字</button><button class="wt" data-t="p">片語</button><button class="wt" data-t="g">文法</button></div>
+ <div id="wlist"></div>
+ <div class="rt"><button id="rw">🔁 重測單字</button><button id="rp">🔁 重測片語</button><button id="rg">🔁 重測文法</button></div></aside><div id="ov"></div>
  <section class="scr" id="end">
   <div class="res"><div class="big" id="eIcon"></div><h2 id="eTitle"></h2><p id="eText"></p>
-   <button class="pri" id="again">再玩一次</button><button class="ghost" id="menu">回選單</button></div>
+   <button class="pri" id="again">再玩一次</button><button class="ghost" id="menu">回選單</button><button class="ghost" id="wend">📕 錯題本</button></div>
  </section>
 </div>
 <script>
@@ -123,11 +137,15 @@ function speak(w){try{speechSynthesis.cancel();const u=new SpeechSynthesisUttera
 function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('on',s.id===id));if(id==='home')stats()}
 // 學習記憶（間隔重複）
 let stat={};try{stat=JSON.parse(localStorage.getItem('wq')||'{}')}catch(e){}
-function upd(k,r){const b=stat[k];stat[k]=r>0?Math.min(5,(b||0)+1):r===0?Math.min(b||0,1):0;try{localStorage.setItem('wq',JSON.stringify(stat))}catch(e){}}
+let wl={};try{wl=JSON.parse(localStorage.getItem('wqw')||'{}')}catch(e){}
+function wsave(){try{localStorage.setItem('wqw',JSON.stringify(wl))}catch(e){}}
+function addW(k){wl[k]=(wl[k]||0)+1;wsave()}
+function delW(k){if(k in wl){delete wl[k];wsave()}}
+function upd(k,r){const kk=/^[pg]:/.test(k)?k:'w:'+k;if(r<0&&!S.re){S.wk=S.wk||new Set();if(!S.wk.has(kk)){S.wk.add(kk);addW(kk)}}if(r>0&&S.re)delW(kk);const b=stat[k];stat[k]=r>0?Math.min(5,(b||0)+1):r===0?Math.min(b||0,1):0;try{localStorage.setItem('wq',JSON.stringify(stat))}catch(e){}}
 function miss(w,m){if(!S.miss.some(x=>x[0]===w))S.miss.push([w,m])}
 function rq(x){if(!x.rq){x.rq=1;S.q.splice(Math.min(S.i+2,S.q.length),0,x)}}
 function prio(a,key){const sc=k=>{const b=stat[k];return b===undefined?2:[3,1.6,1.2,.9,.5,.2][b]};return a.map(x=>[sc(key(x))*(.5+Math.random()),x]).sort((p,q)=>q[0]-p[0]).map(p=>p[1])}
-function stats(){const c=[0,0,0,0],t=[0,0,0,0];RAW.forEach(x=>{t[x.lv-1]++;if(stat[x.word]>=4)c[x.lv-1]++});PH.forEach(x=>{t[3]++;if(stat['p:'+x.p]>=4)c[3]++});$('stats').innerHTML='📊 已熟練（不靠提示連續答對 4 次）<br>Lv1 '+c[0]+'/'+t[0]+' · Lv2 '+c[1]+'/'+t[1]+' · Lv3 '+c[2]+'/'+t[2]+' · 片語 '+c[3]+'/'+t[3]}
+function stats(){const c=[0,0,0,0],t=[0,0,0,0];RAW.forEach(x=>{t[x.lv-1]++;if(stat[x.word]>=4)c[x.lv-1]++});PH.forEach(x=>{t[3]++;if(stat['p:'+x.p]>=4)c[3]++});$('stats').innerHTML='📊 已熟練（不靠提示連續答對 4 次）<br>Lv1 '+c[0]+'/'+t[0]+' · Lv2 '+c[1]+'/'+t[1]+' · Lv3 '+c[2]+'/'+t[2]+' · 片語 '+c[3]+'/'+t[3];renderW()}
 function preview(cb){
  lock=true;const tok=S;
  const s0=slots.slice(),l0=locked.slice(),u0=tiles.map(t=>t.u);
@@ -165,7 +183,7 @@ function tick(){const p=tLeft/S.c.t*100;const f=$('tfill');f.style.width=p+'%';f
 function hud(){
  $('score').textContent=S.score+' 分';
  $('hint').textContent='提示 💡 ('+hints+')';
- $('prog').textContent='Lv'+S.lv+' · 已答對 '+S.ok+' / '+S.c.n;
+ $('prog').textContent=(S.re?'錯題重測':'Lv'+S.lv)+' · 已答對 '+S.ok+' / '+S.c.n;
  $('hearts').textContent=S.c.h?'❤️'.repeat(S.hearts)+'🖤'.repeat(S.c.h-S.hearts):'';
  $('combo').textContent=S.lv===3&&S.combo>1?'🔥×'+mult().toFixed(1):'';
 }
@@ -242,14 +260,14 @@ function hint(){
 function end(ok){
  clearInterval(timer);
  $('eIcon').textContent=ok?'🏆':'💔';
- $('eTitle').textContent=ok?'闖關成功！':'挑戰失敗';
+ $('eTitle').textContent=S.re?(ok?'錯題全部攻克！':'再接再厲！'):ok?'闖關成功！':'挑戰失敗';
  $('eText').innerHTML='答對 '+S.ok+' / '+S.c.n+' 題<br>總分：<b style="color:var(--ac)">'+S.score+'</b>'+(S.miss.length?'<div style="text-align:left;font-size:15px;line-height:1.6;margin:8px 0">📝 這回要加強（會更常出現）：<br>'+S.miss.slice(0,8).map(x=>x[0]+' '+x[1]).join('<br>')+'</div>':'');
  show('end');
 }
 // 片語選擇題
 const PH=PD.map(a=>({p:a[0],pos:a[1],m:a[2],e:EXM[a[0].toLowerCase()]||''}));
 let P,PO;
-function startP(){S={lv:'p',c:{n:8},q:prio(PH,x=>'p:'+x.p),i:0,ok:0,score:0,hearts:3,combo:0,miss:[]};PH.forEach(x=>x.rq=0);show('phr');nextP()}
+function startP(re){const q=re?shuf(PH.filter(x=>wl['p:'+x.p])).slice(0,10):prio(PH,x=>'p:'+x.p);S={lv:'p',c:{n:re?q.length:8},q,i:0,ok:0,score:0,hearts:3,combo:0,miss:[],re:re?'p':0};PH.forEach(x=>x.rq=0);show('phr');nextP()}
 function hudP(){$('ph').textContent='\u2764\ufe0f'.repeat(S.hearts)+'\ud83d\udda4'.repeat(3-S.hearts);$('pc').textContent=S.combo>1?'\ud83d\udd25\u00d7'+S.combo:'';$('ps').textContent=S.score+' \u5206';$('pp').textContent='\u55ae\u5b57\u7247\u8a9e \u00b7 \u5df2\u7b54\u5c0d '+S.ok+' / '+S.c.n}
 function nextP(){
  if(S.ok>=S.c.n||S.i>=S.q.length)return end(S.ok>=S.c.n);
@@ -380,9 +398,10 @@ const GR=GD.map((a,i)=>({id:'g'+i,s:{c:1,e:2,r:3}[a[0]],a}));
 const SN=['','第1關 基礎・選擇題','第2關 進階・挑錯題','第3關 高階・句子重組'];
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 let G,GP,GC;
-function startG(){
+function startG(re){
  const by=s=>prio(GR.filter(x=>x.s===s),x=>'g:'+x.id).slice(0,5);
- S={lv:'g',c:{n:15},q:[...by(1),...by(2),...by(3)],i:0,ok:0,score:0,hearts:5,combo:0,miss:[]};
+ const q0=re?GR.filter(x=>wl['g:'+x.id]).sort((a,b)=>a.s-b.s).slice(0,10):[...by(1),...by(2),...by(3)];
+ S={lv:'g',c:{n:re?q0.length:15},q:q0,i:0,ok:0,score:0,hearts:5,combo:0,miss:[],re:re?'g':0};
  GR.forEach(x=>x.rq=0);show('gr');nextG();
 }
 function hudG(){$('gh').textContent='❤️'.repeat(Math.max(S.hearts,0))+'🖤'.repeat(Math.max(5-S.hearts,0));$('gc').textContent=S.combo>1?'🔥×'+S.combo:'';$('gsc').textContent=S.score+' 分'}
@@ -422,6 +441,38 @@ $('gopts').onclick=e=>{const b=e.target.closest('[data-i]');if(!b||lock)return;c
  if(G.a[0]==='r'){if(GC.includes(i))return;GC.push(i);sClick();renderG();if(GC.length===GP.length)answerG(GC.map(k=>GP[k]).join(' ')===G.a[2])}
  else answerG(G.a[0]==='c'?GP[i]===G.a[2]:i===G.a[2],b)};
 $('gans').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||lock)return;GC.splice(+b.dataset.a,1);sClick();renderG()};
+// 錯題本（左側抽屜）
+const MW=new Map(RAW.map(x=>['w:'+x.word,x])),MP=new Map(PH.map(x=>['p:'+x.p,x])),MG=new Map(GR.map(x=>['g:'+x.id,x]));
+let wtab='a';
+function wInfo(k){const t=k[0];
+ if(t==='w'){const x=MW.get(k);return x?[x.word,x.mean]:null}
+ if(t==='p'){const x=MP.get(k);return x?[x.p,x.m]:null}
+ const x=MG.get(k);if(!x)return null;const a=x.a;
+ return [a[0]==='c'?a[1].replace('___',a[2]):a[0]==='e'?a[1].replace(/\|/g,' '):a[2],a[0]==='e'?a[3]:a[0]==='c'?a[6]:a[1]]}
+function renderW(){
+ const ks=Object.keys(wl).filter(k=>wInfo(k)),cnt={w:0,p:0,g:0};ks.forEach(k=>cnt[k[0]]++);
+ $('wcnt').textContent=ks.length?'('+ks.length+')':'';
+ document.querySelectorAll('.wt').forEach(b=>b.classList.toggle('on',b.dataset.t===wtab));
+ const lst=ks.filter(k=>wtab==='a'||k[0]===wtab).sort((a,b)=>wl[b]-wl[a]);
+ $('wlist').innerHTML=lst.length?lst.map(k=>{const [a,b]=wInfo(k);return '<div class="wi"><div><b>'+esc(a)+'</b><br><small>'+esc(b)+' · 錯 '+wl[k]+' 次</small></div><button data-d="'+esc(k)+'">✕</button></div>'}).join(''):'<p class="sub">目前沒有錯題 🎉</p>';
+ $('rw').textContent='🔁 重測單字（'+cnt.w+'）';$('rp').textContent='🔁 重測片語（'+cnt.p+'）';$('rg').textContent='🔁 重測文法（'+cnt.g+'）';
+ $('rw').disabled=!cnt.w;$('rp').disabled=!cnt.p;$('rg').disabled=!cnt.g;
+}
+function openW(){renderW();$('drw').classList.add('open');$('ov').classList.add('on')}
+function closeW(){$('drw').classList.remove('open');$('ov').classList.remove('on')}
+function startR(){
+ const q=shuf(RAW.filter(x=>wl['w:'+x.word])).slice(0,10);
+ S={lv:'r',c:{n:q.length,t:0,h:0,d:2},q,i:0,ok:0,score:0,hearts:0,combo:0,miss:[],re:'w'};
+ RAW.forEach(x=>x.rq=0);$('tbar').style.display=$('time').style.display='none';show('game');next();
+}
+function retest(k){
+ if(!Object.keys(wl).some(x=>x[0]===k&&wInfo(x)))return show('home');
+ if(k==='w')startR();else if(k==='p')startP(1);else startG(1);
+}
+$('wbtn').onclick=openW;$('wend').onclick=openW;$('wclose').onclick=closeW;$('ov').onclick=closeW;
+document.querySelectorAll('.wt').forEach(b=>b.onclick=()=>{wtab=b.dataset.t;renderW()});
+$('wlist').onclick=e=>{const b=e.target.closest('[data-d]');if(b){delW(b.dataset.d);renderW()}};
+$('rw').onclick=()=>{closeW();retest('w')};$('rp').onclick=()=>{closeW();retest('p')};$('rg').onclick=()=>{closeW();retest('g')};
 // 事件
 document.querySelectorAll('.lv[data-lv]').forEach(b=>b.onclick=()=>{sClick();start(+b.dataset.lv)});
 $('pool').onclick=e=>{const b=e.target.closest('[data-t]');if(b)put(+b.dataset.t)};
@@ -431,7 +482,7 @@ $('rst').onclick=()=>{if(lock)return;sClick();clearAll();render()};
 $('hint').onclick=hint;
 $('spk').onclick=()=>cur&&speak(cur.word);
 $('quit').onclick=()=>{clearInterval(timer);show('home')};
-$('again').onclick=()=>S.lv==='p'?startP():S.lv==='g'?startG():start(S.lv);
+$('again').onclick=()=>S.re?retest(S.re):S.lv==='p'?startP():S.lv==='g'?startG():start(S.lv);
 $('menu').onclick=()=>show('home');
 stats();
 </script>
