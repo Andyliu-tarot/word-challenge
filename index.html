@@ -44,6 +44,12 @@ h1{text-align:center;margin:18px 0 4px;font-size:28px}
 #popts{display:flex;flex-direction:column;gap:12px;margin-top:auto;margin-bottom:16px}
 .opt{padding:18px;border-radius:14px;background:#2c4577;font-size:20px;font-weight:700}
 .opt:active{background:#3b5a96}.opt.g{background:var(--ok);color:#06210f}.opt.r{background:var(--bad)}
+.chip{padding:10px 14px;margin:4px;border-radius:10px;background:var(--ac);color:#1b1b1b;font-weight:700;font-size:18px}
+.chip.u{visibility:hidden}
+#gr{overflow-y:auto}#gnext{display:none}
+#gans{display:none;min-height:56px;border:2px dashed #4a6199;border-radius:12px;padding:4px;flex-wrap:wrap;margin:8px 0}
+#gopts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:auto;margin-bottom:12px}
+#gopts .opt{flex:1 1 100%;font-size:18px;padding:14px}
 </style>
 </head>
 <body>
@@ -56,6 +62,7 @@ h1{text-align:center;margin:18px 0 4px;font-size:28px}
   <button class="lv" data-lv="2"><b>🏝️ Lv2 中級島（B3–B4）</b><small>佳音翰林 B3–B4 單字 · 2 個干擾字母<br>30 秒 · 3 顆愛心 · 通關：答對 8 題</small></button>
   <button class="lv" data-lv="3"><b>🌋 Lv3 高級島（B5–B6）</b><small>佳音翰林 B5–B6 單字 · 4 個高混淆字母<br>20 秒 · 2 顆愛心 · Combo 加分 · 通關：答對 10 題</small></button>
   <button class="lv" id="pbtn"><b>📘 片語挑戰（選擇題）</b><small>全冊片語與多字詞組，從 4 個選項選出正確英文<br>3 顆愛心 · 連續答對加分 · 通關：答對 8 題</small></button>
+  <button class="lv" id="gbtn"><b>✏️ 文法闖關（由易到難）</b><small>3 關：選擇題 → 挑錯題 → 句子重組<br>5 顆愛心 · 每題附文法解析 · 共 15 題</small></button>
  </section>
  <section class="scr" id="game">
   <div class="top"><button id="quit" class="spk" style="margin:0">✕</button><span id="hearts"></span><span id="combo"></span><span class="sc" id="score">0</span></div>
@@ -77,6 +84,15 @@ h1{text-align:center;margin:18px 0 4px;font-size:28px}
   <div class="card" style="margin-top:12px"><div class="mean" id="pm"></div><div class="ex" id="pe"></div></div>
   <div id="pmsg" style="min-height:22px;text-align:center;font-weight:700"></div>
   <div id="popts"></div>
+ </section>
+ <section class="scr" id="gr">
+  <div class="top"><button id="gquit" class="spk" style="margin:0">✕</button><span id="gh"></span><span id="gc"></span><span class="sc" id="gsc">0 分</span></div>
+  <div class="prog" style="margin-top:10px"><span id="gp"></span></div>
+  <div class="card" style="margin-top:12px"><div id="gq" style="color:var(--mu);font-size:14px"></div><div id="gs" style="font-size:22px;font-weight:800;margin-top:8px;line-height:1.4"></div></div>
+  <div id="gans"></div>
+  <div id="gmsg" style="min-height:22px;text-align:center;font-weight:700;font-size:15px;line-height:1.5"></div>
+  <div id="gopts"></div>
+  <button id="gnext" class="pri" style="margin:0 0 14px">下一題 ›</button>
  </section>
  <section class="scr" id="end">
   <div class="res"><div class="big" id="eIcon"></div><h2 id="eTitle"></h2><p id="eText"></p>
@@ -110,7 +126,7 @@ let stat={};try{stat=JSON.parse(localStorage.getItem('wq')||'{}')}catch(e){}
 function upd(k,r){const b=stat[k];stat[k]=r>0?Math.min(5,(b||0)+1):r===0?Math.min(b||0,1):0;try{localStorage.setItem('wq',JSON.stringify(stat))}catch(e){}}
 function miss(w,m){if(!S.miss.some(x=>x[0]===w))S.miss.push([w,m])}
 function rq(x){if(!x.rq){x.rq=1;S.q.splice(Math.min(S.i+2,S.q.length),0,x)}}
-function prio(a,key){const sc=k=>{const b=stat[k];return b===undefined?1:[3,2.5,1.5,1,.5,.2][b]};return a.map(x=>[sc(key(x))*(.5+Math.random()),x]).sort((p,q)=>q[0]-p[0]).map(p=>p[1])}
+function prio(a,key){const sc=k=>{const b=stat[k];return b===undefined?2:[3,1.6,1.2,.9,.5,.2][b]};return a.map(x=>[sc(key(x))*(.5+Math.random()),x]).sort((p,q)=>q[0]-p[0]).map(p=>p[1])}
 function stats(){const c=[0,0,0,0],t=[0,0,0,0];RAW.forEach(x=>{t[x.lv-1]++;if(stat[x.word]>=4)c[x.lv-1]++});PH.forEach(x=>{t[3]++;if(stat['p:'+x.p]>=4)c[3]++});$('stats').innerHTML='📊 已熟練（不靠提示連續答對 4 次）<br>Lv1 '+c[0]+'/'+t[0]+' · Lv2 '+c[1]+'/'+t[1]+' · Lv3 '+c[2]+'/'+t[2]+' · 片語 '+c[3]+'/'+t[3]}
 function preview(cb){
  lock=true;const tok=S;
@@ -257,6 +273,155 @@ function pick(b){
 $('pbtn').onclick=()=>{sClick();startP()};
 $('popts').onclick=e=>{const b=e.target.closest('.opt');if(b)pick(b)};
 $('pq').onclick=()=>show('home');
+// 文法闖關：第1關選擇題(基礎) → 第2關挑錯題(進階) → 第3關句子重組(高階)
+const GD=[
+['c','I ___ a student.','am','is','are','be','主詞 I 搭配 be 動詞 am。'],
+['c','She ___ my sister.','is','am','are','be','she 是第三人稱單數，be 動詞用 is。'],
+['c','They ___ in the park.','are','is','am','be','主詞 they 是複數，be 動詞用 are。'],
+['c','I have ___ apple.','an','a','two','some','apple 以母音發音開頭，前面用 an。'],
+['c','This is Tom. ___ is my classmate.','He','She','They','It','Tom 是男生，代名詞用 he。'],
+['c','There ___ two books on the desk.','are','is','am','be','two books 是複數，用 There are。'],
+['c','My mother ___ breakfast every day.','makes','make','making','to make','主詞 my mother 是第三人稱單數，動詞加 s：makes。'],
+['c','I can ___ the piano.','play','plays','playing','to play','can 後面接原形動詞：play。'],
+['c','Where ___ you from?','are','is','do','does','主詞 you 搭配 be 動詞 are。'],
+['c','Do you ___ a pet?','have','has','having','had','Do 開頭的問句，後面動詞用原形：have。'],
+['e','She|go|to school|every day.',1,'she 是第三人稱單數，現在簡單式動詞要加 es：goes。'],
+['e','Yesterday|I|go|to the zoo.',2,'yesterday 表示過去，動詞要用過去式 went。'],
+['e','He|is|play|basketball now.',2,'now 表示正在進行，要用現在進行式：is playing。'],
+['e','This book|is|more good|than that one.',2,'good 的比較級是 better，不能用 more good。'],
+['e','I|will|went|to Japan next week.',2,'will 後面接原形動詞：go。'],
+['e','You|should|to study|harder.',2,'should 後面接原形動詞：study，不加 to。'],
+['e','There|is|three eggs|in the box.',1,'three eggs 是複數，要用 There are。'],
+['e','Tom|do not|like|milk.',1,'Tom 是第三人稱單數，否定要用 does not。'],
+['e','He|enjoys|to read|comic books.',2,'enjoy 後面接動名詞：reading。'],
+['e','Because|it was raining,|but|we stayed home.',2,'because 和 but 不能同時連接同一個句子，要刪掉 but。'],
+['e','How|much|apples|do you want?',1,'apples 是可數名詞，要問 how many。'],
+['r','我已經完成作業了。','I have already finished my homework.','現在完成式：have / has + 過去分詞，already 放在 have 之後。'],
+['r','這本書是由一位老師寫的。','This book was written by a teacher.','被動語態：be 動詞 + 過去分詞 + by + 動作者。'],
+['r','我認識那個住在隔壁的男孩。','I know the boy who lives next door.','關係代名詞 who 引導子句，修飾前面的 the boy。'],
+['r','這部電影太無聊了，我睡著了。','The movie was so boring that I fell asleep.','so ... that ... 表示「如此…以致於…」。'],
+['r','你知道他住在哪裡嗎？','Do you know where he lives?','間接問句要用肯定句語序：where he lives。'],
+['r','如果明天下雨，我就待在家。','If it rains tomorrow, I will stay at home.','if 條件句中，用現在式代替未來式：rains。'],
+['r','我從十歲起就住在這裡了。','I have lived here since I was ten.','since + 過去的時間點，主要子句用現在完成式。'],
+['r','媳媳每天叫我打掃房間。','My mother makes me clean my room every day.','make + 受詞 + 原形動詞，表示「使…做…」。'],
+['r','他跑得太慢，趕不上公車。','He ran too slowly to catch the bus.','too ... to ... 表示「太…而不能…」。'],
+['r','我既不喜歡咖啡也不喜歡茶。','I like neither coffee nor tea.','neither ... nor ... 表示「既不…也不…」。'],
+['r','我對這個主題很感興趣。','I am interested in this topic.','人感到興趣用 interested，片語為 be interested in。'],
+["c","This is ___ pen.","a","an","two","many","pen 是單數且以子音發音開頭，用 a。"],
+["c","Those ___ my books.","are","is","am","be","those 是複數，be 動詞用 are。"],
+["c","That ___ my bike.","is","are","am","be","that 是單數，be 動詞用 is。"],
+["c","We ___ good friends.","are","is","am","be","主詞 we 是複數，be 動詞用 are。"],
+["c","He ___ not at home.","is","are","am","do","he 搭配 is，否定在 is 後面加 not。"],
+["c","___ you a teacher?","Are","Is","Am","Do","you 搭配 are，疑問句把 be 動詞放句首。"],
+["c","She ___ English every day.","studies","studys","study","studying","study 字尾是「子音+y」，第三人稱單數去 y 加 ies。"],
+["c","I ___ like milk.","do not","does not","am not","not","主詞 I 搭配助動詞 do，否定用 do not。"],
+["c","My brother ___ not like fish.","does","do","is","has","my brother 是第三人稱單數，助動詞用 does。"],
+["c","How many ___ are there in the box?","eggs","egg","a egg","much egg","how many 後面接複數名詞。"],
+["c","There ___ a cat under the chair.","is","are","am","have","a cat 是單數，用 There is。"],
+["c","I have two ___.","boxes","box","boxs","a box","box 字尾是 x，複數加 es。"],
+["c","Tom has three ___.","babies","babys","baby","babyes","baby 字尾是「子音+y」，複數去 y 加 ies。"],
+["c","The ___ are playing in the yard.","children","childs","childes","child","child 的複數是不規則變化 children。"],
+["c","___ pencil case is this?","Whose","Who","Where","When","Whose 用來詢問「誰的」。"],
+["c","A: ___ is the library? B: It is near the park.","Where","When","Who","Why","回答是地點，所以用 Where 詢問地方。"],
+["c","I get up ___ 6:30 every day.","at","on","in","by","at 接幾點鐘的時間。"],
+["c","My birthday is ___ March.","in","on","at","to","in 接月份。"],
+["c","The book is ___ the desk.","on","in","at","of","on 表示在…上面（接觸）。"],
+["c","Let us ___ to the park.","go","goes","going","to go","Let us 後面接原形動詞。"],
+["c","Mary and I ___ classmates.","are","is","am","be","Mary and I 是複數，be 動詞用 are。"],
+["c","Is this ___ book?","your","you","yours","yourself","名詞 book 前面要用所有格 your。"],
+["c","This is my sister. ___ name is Amy.","Her","She","Hers","Him","名詞前面用所有格 her。"],
+["c","___ the girl in the red dress?","Who is","What is","Where is","Who are","問「是誰」用 Who is，the girl 是單數。"],
+["e","My father|work|in a bank|every day.",1,"my father 是第三人稱單數，動詞要加 s：works。"],
+["e","She|did not|went|to school yesterday.",2,"did not 後面接原形動詞：go。"],
+["e","I|am watching|TV|last night.",1,"last night 表示過去，要用過去進行式 was watching。"],
+["e","Tom|is|more tall|than I.",2,"tall 的比較級是 taller，不用 more。"],
+["e","This is|the most big|city|in Taiwan.",1,"big 的最高級是 biggest（重複字尾 g 再加 est）。"],
+["e","He|runs|more fast|than I.",2,"fast 的比較級是 faster。"],
+["e","There|are|some milk|in the fridge.",1,"milk 是不可數名詞，要用 There is。"],
+["e","I have|a lot of|homeworks|to do.",2,"homework 是不可數名詞，沒有複數形。"],
+["e","She|is|good at|sing.",3,"at 是介系詞，後面接動名詞：singing。"],
+["e","He|wants|go|to the park.",2,"want 後面接不定詞：to go。"],
+["e","I|am|looking forward to|see you.",3,"look forward to 的 to 是介系詞，後面接 seeing。"],
+["e","If|it will rain|tomorrow,|I will stay home.",1,"if 條件句中，用現在式代替未來式：rains。"],
+["e","You|must not|to be|late.",2,"must not 後面接原形動詞：be。"],
+["e","We|have lived|here|since five years.",3,"for + 一段時間；since + 過去的時間點，這裡應改成 for five years。"],
+["e","I|have visited|Japan|last year.",1,"last year 是明確的過去時間，要用過去式 visited。"],
+["e","She has|two|sister|and one brother.",2,"two 之後的名詞要用複數：sisters。"],
+["e","He|always|is|late for school.",1,"頻率副詞要放在 be 動詞之後：He is always late。"],
+["e","I|can|speaks|English.",2,"can 後面接原形動詞：speak。"],
+["e","Does|your brother|likes|music?",2,"Does 後面動詞用原形：like。"],
+["e","This is|a|useful|information.",1,"information 是不可數名詞，前面不能加 a。"],
+["e","He was born|at|1990|in Taipei.",1,"年份前面用 in：in 1990。"],
+["e","The weather|is getting|more hot|today.",2,"hot 的比較級是 hotter（重複字尾 t 再加 er）。"],
+["r","我昨天去看電影。","I went to the movies yesterday.","yesterday 表示過去，動詞用過去式 went。"],
+["r","他正在讀一本有趣的書。","He is reading an interesting book.","現在進行式：is + V-ing；事物令人覺得有趣用 interesting。"],
+["r","這個問題比那個簡單。","This question is easier than that one.","比較級 + than；easy 去 y 加 ier。"],
+["r","她是班上最高的女孩。","She is the tallest girl in the class.","最高級：the + 形容詞 + est + in + 範圍。"],
+["r","我打算明年去日本。","I am going to visit Japan next year.","be going to + 原形動詞，表示未來的計畫。"],
+["r","你應該多喝水。","You should drink more water.","should + 原形動詞，表示「應該」。"],
+["r","我喜歡看電影。","I enjoy watching movies.","enjoy 後面接動名詞：watching。"],
+["r","她想要學游泳。","She wants to learn how to swim.","want 後接不定詞；how to + 原形表示「如何…」。"],
+["r","我們已經等了一個小時。","We have waited for an hour.","現在完成式：have + 過去分詞；for + 一段時間。"],
+["r","他以前住在台北。","He used to live in Taipei.","used to + 原形動詞，表示過去的習慣或狀態。"],
+["r","那位老師很受學生歡迎。","The teacher is popular with students.","be popular with 表示「受…歡迎」。"],
+["r","這是我看過最好的電影。","This is the best movie that I have ever seen.","最高級 + that + 現在完成式（常搭配 ever）。"],
+["r","我不知道他是誰。","I do not know who he is.","間接問句要用肯定句語序：who he is。"],
+["r","請告訴我車站在哪裡。","Please tell me where the station is.","間接問句要用肯定句語序：where the station is。"],
+["r","這首歌被很多人喜愛。","This song is loved by many people.","被動語態：be 動詞 + 過去分詞 + by。"],
+["r","這間房子是在二〇一〇年蓋的。","This house was built in 2010.","過去被動語態：was / were + 過去分詞。"],
+["r","他是我昨天遇到的那個人。","He is the man that I met yesterday.","關係代名詞 that 在子句中當受詞，修飾 the man。"],
+["r","我有一個住在美國的朋友。","I have a friend who lives in America.","關係代名詞 who 修飾人，後面動詞配合先行詞 a friend。"],
+["r","她唱得很好，所以大家都喜歡她。","She sings so well that everyone likes her.","so + 副詞 + that + 子句，表示「如此…以致於…」。"],
+["r","如果我是你，我就會努力讀書。","If I were you, I would study hard.","與現在事實相反的假設：If + were，主要子句用 would。"],
+["r","他讓我們笑了很久。","He made us laugh for a long time.","make + 受詞 + 原形動詞，表示「使…做…」。"],
+["r","不但我，連我弟弟也喜歡棒球。","Not only I but also my brother likes baseball.","not only A but also B，動詞與 B 一致。"]
+];
+const GR=GD.map((a,i)=>({id:'g'+i,s:{c:1,e:2,r:3}[a[0]],a}));
+const SN=['','第1關 基礎・選擇題','第2關 進階・挑錯題','第3關 高階・句子重組'];
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+let G,GP,GC;
+function startG(){
+ const by=s=>prio(GR.filter(x=>x.s===s),x=>'g:'+x.id).slice(0,5);
+ S={lv:'g',c:{n:15},q:[...by(1),...by(2),...by(3)],i:0,ok:0,score:0,hearts:5,combo:0,miss:[]};
+ GR.forEach(x=>x.rq=0);show('gr');nextG();
+}
+function hudG(){$('gh').textContent='❤️'.repeat(Math.max(S.hearts,0))+'🖤'.repeat(Math.max(5-S.hearts,0));$('gc').textContent=S.combo>1?'🔥×'+S.combo:'';$('gsc').textContent=S.score+' 分'}
+function renderG(){
+ if(G.a[0]==='r'){
+  $('gans').innerHTML=GC.map((i,k)=>'<button class="chip" data-a="'+k+'">'+esc(GP[i])+'</button>').join('');
+  $('gopts').innerHTML=GP.map((w,i)=>'<button class="chip'+(GC.includes(i)?' u':'')+'" data-i="'+i+'">'+esc(w)+'</button>').join('');
+ }else $('gopts').innerHTML=GP.map((w,i)=>'<button class="opt" data-i="'+i+'">'+esc(w)+'</button>').join('');
+}
+function nextG(){
+ if(S.i>=S.q.length)return end(S.hearts>0);
+ G=S.q[S.i++];lock=false;const a=G.a;
+ $('gnext').style.display='none';$('gmsg').textContent='';$('gans').style.display='none';
+ $('gp').textContent=SN[G.s]+' · 第 '+S.i+' / '+S.q.length+' 題';
+ if(a[0]==='c'){$('gq').textContent='選出最適合填入空格的答案';$('gs').textContent=a[1];GP=shuf([a[2],a[3],a[4],a[5]])}
+ else if(a[0]==='e'){$('gq').textContent='哪一個部分有文法錯誤？';$('gs').textContent=a[1].replace(/\|/g,' ');GP=a[1].split('|')}
+ else{$('gq').textContent='把單字排成正確的句子';$('gs').textContent=a[1];GP=shuf(a[2].split(' '));GC=[];$('gans').style.display='flex'}
+ renderG();hudG();
+}
+function answerG(ok,b){
+ lock=true;const a=G.a,t=a[0];
+ const ans=t==='c'?a[1].replace('___',a[2]):t==='r'?a[2]:'';
+ const exp=t==='c'?a[6]:a[3];
+ document.querySelectorAll('#gopts .opt').forEach(x=>{const i=+x.dataset.i;if(t==='c'?GP[i]===a[2]:i===a[2])x.classList.add('g')});
+ if(b&&!ok)b.classList.add('r');
+ if(ok){sOk();upd('g:'+G.id,1);S.ok++;S.combo++;S.score+=10+Math.min(S.combo-1,5)*2+(G.s-1)*5}
+ else{sBad();upd('g:'+G.id,-1);miss(ans||a[1].replace(/\|/g,' '),ans?'':a[3]);rq(G);S.combo=0;S.hearts--}
+ $('gmsg').style.color=ok?'var(--ok)':'var(--bad)';
+ $('gmsg').innerHTML=(ok?'✅ 答對了！':'❌ 再記一下')+(!ok&&t==='r'?'<br>'+a[2]:'')+'<br><span style="font-weight:400;color:var(--tx)">'+exp+'</span>';
+ if(ans)speak(ans);
+ hudG();$('gnext').style.display='block';
+}
+$('gbtn').onclick=()=>{sClick();startG()};
+$('gquit').onclick=()=>show('home');
+$('gnext').onclick=()=>S.hearts<=0?end(false):nextG();
+$('gopts').onclick=e=>{const b=e.target.closest('[data-i]');if(!b||lock)return;const i=+b.dataset.i;
+ if(G.a[0]==='r'){if(GC.includes(i))return;GC.push(i);sClick();renderG();if(GC.length===GP.length)answerG(GC.map(k=>GP[k]).join(' ')===G.a[2])}
+ else answerG(G.a[0]==='c'?GP[i]===G.a[2]:i===G.a[2],b)};
+$('gans').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||lock)return;GC.splice(+b.dataset.a,1);sClick();renderG()};
 // 事件
 document.querySelectorAll('.lv[data-lv]').forEach(b=>b.onclick=()=>{sClick();start(+b.dataset.lv)});
 $('pool').onclick=e=>{const b=e.target.closest('[data-t]');if(b)put(+b.dataset.t)};
@@ -266,7 +431,7 @@ $('rst').onclick=()=>{if(lock)return;sClick();clearAll();render()};
 $('hint').onclick=hint;
 $('spk').onclick=()=>cur&&speak(cur.word);
 $('quit').onclick=()=>{clearInterval(timer);show('home')};
-$('again').onclick=()=>S.lv==='p'?startP():start(S.lv);
+$('again').onclick=()=>S.lv==='p'?startP():S.lv==='g'?startG():start(S.lv);
 $('menu').onclick=()=>show('home');
 stats();
 </script>
